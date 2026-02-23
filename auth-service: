@@ -1,0 +1,116 @@
+# Auth Service
+
+Microservicio encargado de la autenticación y autorización de usuarios mediante JWT.
+
+## Responsabilidades
+
+- Registro de usuarios
+- Inicio de sesión y generación de token JWT
+- Gestión de roles: `ADMIN` y `CUSTOMER`
+- Protección de endpoints por rol
+
+## Puerto
+
+`8081`
+
+## Endpoints
+
+| Método | Endpoint | Descripción | Body |
+|--------|----------|-------------|------|
+| POST | `/auth/register` | Registrar usuario | `{ email, password, role }` |
+| POST | `/auth/login` | Login, retorna JWT | `{ email, password }` |
+| GET | `/actuator/health` | Health check | — |
+
+### Ejemplo de login
+
+**Request:**
+```json
+POST /auth/login
+{
+  "email": "usuario@test.com",
+  "password": "secreto123"
+}
+```
+
+**Response exitosa (200):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "type": "Bearer",
+  "role": "CUSTOMER"
+}
+```
+
+**Response fallida (401):**
+```json
+{
+  "error": "Credenciales inválidas"
+}
+```
+
+## Modelo de datos
+
+```sql
+CREATE TABLE users (
+  id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email    VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,  -- BCrypt
+  role     VARCHAR(50) NOT NULL    -- ADMIN | CUSTOMER
+);
+```
+
+## Configuración (application.yml)
+
+```yaml
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/authdb
+    username: reto
+    password: reto
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+security:
+  jwt:
+    secret: "CAMBIAR_ESTA_CLAVE_SUPER_LARGA_DE_32_CHARS_MINIMO"
+    expiration-minutes: 15
+```
+
+## Estructura de paquetes
+
+```
+com.reto.auth/
+├── AuthServiceApplication.java
+├── config/
+│   ├── SecurityConfig.java
+│   └── PasswordConfig.java
+├── controller/
+│   └── AuthController.java
+├── dto/
+│   ├── LoginRequest.java
+│   ├── RegisterRequest.java
+│   └── TokenResponse.java
+├── entity/
+│   ├── UserEntity.java
+│   └── Role.java (enum)
+├── repository/
+│   └── UserRepository.java
+├── security/
+│   ├── JwtService.java
+│   └── JwtAuthFilter.java
+└── service/
+    └── AuthService.java
+```
+
+## Códigos de respuesta
+
+| Código | Descripción |
+|--------|-------------|
+| 200 | Login exitoso, retorna token |
+| 201 | Registro exitoso |
+| 401 | Credenciales inválidas o token ausente |
+| 403 | Rol no autorizado |
